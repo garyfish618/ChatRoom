@@ -2,13 +2,20 @@
 #include <netdb.h>
 #include <iostream>
 #include <arpa/inet.h>
+#include <cstring>
+#include <limits.h>
+#include <unistd.h>
+
+#define MAXDATASIZE 100
 
 // This is the client
 
 int main() {
+    char buf[MAXDATASIZE];
+
     // ---- Inputs to getaddrinfo ----
-    char hostname[_POSIX_HOST_NAME_MAX];
-    const char* port = "http";
+    char hostname[HOST_NAME_MAX];
+    const char* port = "3490";
 
     std::cout << "Enter hostname to connect to" << "\n"; 
     std::cin >> hostname;
@@ -18,13 +25,15 @@ int main() {
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;
     hints.ai_flags = AI_PASSIVE;
-    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_socktype = SOCK_STREAM;
+
 
     // --- Output to getaddrinfo ---
 
     struct addrinfo* results;
 
     int errCode = getaddrinfo(hostname, port, &hints, &results); //Resolves hostname
+
 
     if(errCode != 0) {
 
@@ -49,10 +58,28 @@ int main() {
 
     }
 
-   if(connect(sock, results->ai_addr, results->ai_addrlen) == -1) {
-       fprintf(stderr, "Failed to connect");
-       return 2;
-   }
+    std::cout << "Socket created" << "\n";
 
+    struct addrinfo *nextAddr;
+    for(nextAddr = results; nextAddr != NULL; nextAddr = nextAddr->ai_next ) {
+        std::cout << "Trying next result" << "\n";
+        if(connect(sock, results->ai_addr, results->ai_addrlen) == -1) {
+        
+            fprintf(stderr, "Failed to connect");
+            continue;
+
+        }
+        std::cout << "Connected" << "\n";
+        break;
+    }
+
+    freeaddrinfo(results);
+
+    int bytesRead = recv(sock, &buf, MAXDATASIZE, 0);
+
+    buf[bytesRead] = '\0';
+
+    std::cout << buf << "\n";
+    close(sock);
 
 }
